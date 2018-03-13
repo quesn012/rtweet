@@ -1,0 +1,315 @@
+---
+title: "Exploration - RT"
+author: "Bryce Quesnel"
+date: "February 24, 2018"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(caret)
+library(lubridate)
+library(Hmisc)
+library(knitr)
+library(tm)
+library(topicmodels)
+library(SnowballC) 
+
+```
+
+
+###Loading the data
+```{r}
+set.seed(72)#setting seed right away
+
+tweets <- read.csv('tweets.csv',header = TRUE)
+users <- read.csv('users.csv', header = TRUE)
+
+```
+
+#NOTE
+This is currently a work in progress. The goal is focused on exploration and I try to throw time into it and try new things as I'm available to with grad school. All below this is subject to change.
+
+Also note: this is purely exploratory. None of this is meant to be taken politically, the goal is just to explore a fun data set and try to find some cool stuff.
+
+###Clean up what needs to be cleaned
+```{r}
+kable(head(tweets,5))
+
+kable(head(users,5))
+```
+
+
+```{r}
+describe(tweets)
+
+summary(tweets)
+```
+
+Notice we do have missing data around userID, createdAt, favoriteCount, tweetId, retweeted_status_ID and in_reply_to_status_id. I'm going to assume if there's missing for the reply/favorite items, then there was not favorite or it was not a reply and its a valid NA. As for the userID data... maybe the users were deleted since the tweets were created? Or maybe they just aren't included in this data set for whatever reason (Private, etc). I'm not a big twitter user or expert so it may be something relevant to look into. 
+
+Additionally, the createdAt data is needed since we're focusing on doing a time analysis. I'm going to take a quick look at the ones missing time.
+
+```{r}
+notime <- tweets %>% filter(is.na(tweets$created_at))
+
+unique(as.character(notime$user_key))
+
+notime$text
+
+```
+
+We can see its 9 different users but oddly enough, no text of the tweets exist. I'm guessing these have since been deleted. I checked a few of the accounts and they've been suspended (no suprise) so we are going to filter these ones out for sake of keeping our analysis clean.
+
+```{r}
+remove(notime) #keeping it clean
+tweets <- tweets %>% filter(!is.na(tweets$created_at))
+```
+
+A few other house keeping cleaning items...
+
+```{r}
+tweets$favorite_count[is.na(tweets$favorite_count)] <- 0
+
+tweets$retweet_count[is.na(tweets$retweet_count)] <- 0
+```
+
+We also need to clean the dates and times.
+```{r}
+tweets$created_str <- as.Date(tweets$created_str,'%Y-%m-%d %H:%M:%S')
+
+tweets$month_year <- floor_date(tweets$created_str, "month")
+tweets$year <- year(tweets$created_str)
+```
+
+
+Let's look at the volume of tweets over time
+```{r}
+tweets_year <- tweets %>% group_by(year) %>% tally()
+ggplot(tweets_year) + geom_bar(stat='identity', aes(year,n, fill = n))
+```
+
+```{r}
+remove(tweets_year)
+tweet_month <- tweets %>% group_by(month_year) %>% tally
+
+ggplot(tweet_month) + geom_line(aes(month_year,n))
+
+```
+
+We can see a ton of activity occuring right around election time which isn't supriring, but also carrying forward the months after election into 2017 then rapidly dropping off.
+
+
+
+
+Next thing we should do is look at some of the top and bottom tweets to try to get a little more domain knowledge on what's happening.
+
+```{r}
+#Let's examine the most popular tweets
+top_20_favorite <- arrange(tweets, favorite_count) %>% tail(20) %>%
+  select(user_key,created_str,month_year,retweet_count,favorite_count,text,hashtags,mentions)
+top_20_favorite
+```
+
+Interesting! Off the bat we have all over the board stuff; a lot of Hillary related items, quite a few BLM tweets and some trump tweets. Interesting thing here is you see a lot of users have multiple tweets in the top 20; ten_gop alone has 6 of the top 20 favorited tweets. 
+
+Speaking of this, lets look at users who have the most likes/retweets. this will be the join where we do summarises to get the sum of favorites/reetweets/etc
+
+```{r}
+top_user <- left_join(tweets,users,by=c('user_key'='name'))
+
+top_user <- top_user %>% group_by(user_key) %>% 
+  summarise(total_fav = sum(favorite_count),
+            total_rt = sum(retweet_count),
+            total_tweets = n()
+            )
+
+
+ggplot(top_user) + geom_density(aes(total_tweets)) + xlab('Total Tweets') + ylab('Number of users')
+ggplot(top_user) + geom_density(aes(total_rt)) + xlab('Total Retweets') + ylab('Number of users')
+ggplot(top_user) + geom_density(aes(total_fav)) + xlab('Total Favorites') + ylab('Number of users')
+```
+
+The above density plots are pretty ugly but it shows us something imprortant; most of the users were relatiely unknown and there were outliers to ones which were very successful. We'll see users with 1000s of tweets and not a single re-tweet or favorite; this mimics the actual usage of twitter where there is tons of traffic and a few actual very popular tweets.
+
+To iterate this let's do a really simple calcluation to find the most popular accounts by activity...
+
+```{r}
+top_user$total_act <- top_user$total_fav + top_user$total_rt
+top_user$act_ratio <- top_user$total_act / top_user$total_tweets
+top_user <- arrange(top_user, act_ratio)
+tail(top_user,5)
+```
+
+In the above we count an 'activity' as a retweet or a favorite. We take the total number of 'activity' divided by the total tweets to get the activity per tweet ratio. We can see a few of those same accounts we saw in our top most favorited tweets are here with the highest actvity per tweet ratio. 
+
+```{r}
+length(top_user$user_key[top_user$act_ratio == 0])
+sum(top_user$total_tweets[top_user$act_ratio == 0])
+```
+
+Additionally, we can see there were 279 users who had NO activity whatsoever, and still created over 61,645 tweets! That's a little shy of a third of all the tweets coming from users who never had ANY actvity whatsoever. Still though, that means more than 2/3s the tweet came from accounts that were active with other twitter accounts in some way or another.
+
+
+#Topic Modeling
+
+So let's get to the core of this analysis: Topic modeling! I thought it would be interesting to run latent dirichlet allocation on this data set, since it would be interesting to understand what topics were being discussed in what frequency relative to what was occuring during that timeline. The results may not be too suprising but it would help us understand the topics that were emphasized to influence the election relative to what was going on in the greater political atmosphere.
+
+Note: due to the nature we already discussed, the topics focused on may not represent the actual influence. It is very apparent based of retweets and favorites the quality of the tweet matters more than the quantity. That being said, let's see if topic modeling results make any sense.
+
+```{r}
+#creating a corpus of tweets
+tweet_doc <- Corpus(VectorSource(as.character(tweets$text)))
+
+#removing punctuation
+tweet_doc <- tm_map(tweet_doc, removePunctuation)
+#removing numbers too
+tweet_doc <- tm_map(tweet_doc, removeNumbers)
+#putting it all to lower case
+tweet_doc <- tm_map(tweet_doc, content_transformer(tolower))
+#removing stop words with no specific topic
+tweet_doc <- tm_map(tweet_doc, removeWords, stopwords("english"))
+#remove any irrelevant white space
+tweet_doc <- tm_map(tweet_doc, stripWhitespace)
+```
+
+The above is just preparing to run topic models. We are stripping out all the things we don't care about; punctuation, numbers, stop words, white space etc. Note I did not stem the words in this case as I wanted to see the full outputs of different words due to the nature of things like twitter handles (real vs realDonaldTrump, etc).
+
+```{r}
+tfm <- DocumentTermMatrix(tweet_doc)
+
+
+#removing sparse items in the matrix
+tfm<-removeSparseTerms(tfm, sparse=0.9999) #since these are stemmed tweets i'm expecting to have a lot of sparseness
+#setting the bar low for non-sparise items
+
+#removing sparse rows
+ui = unique(tfm$i)
+tfm = tfm[ui,]
+
+
+print(dim(tfm))
+```
+
+Above is our term frequency matrix. We use this term frequency matrix to run LDA on to find our topics. Note that I removed all rows without terms in the term frequecy matrix. Additionally, I removed the really scarce terms to hopefully decrease the size of the matrix and increase the speed at which this runs.
+
+```{r}
+set.seed(72)
+results <- LDA(tfm, k = 12, method = "Gibbs")
+
+
+w= 5
+thresh = 0.01 #was .015
+Terms12_nostem <- terms(results, w,thresh) 
+
+
+Terms12_nostem #this one is actually pretty solid
+```
+
+Aftering trying different thresholds and sizes, 12 seems to give us the clearest set of topics. Not every topic is perfect but I think we have a few ones that really stick out!
+
+"Police and race"
+```{r}
+Terms12_nostem[1] 
+```
+
+A little unsure on this one but it seems to be focused on race and police as topics. Note that 'blicquer' is a popular black news and twitter handle with over 157k followers.
+
+"General Election"
+```{r}
+Terms12_nostem[2] 
+```
+
+This one seems pretty straightforward, discussing trump and the election. I note that trump is one word and 'hillaryclinton' is to words combined together which makes me think its typically used in a hash tag. This seems non-biased but generally aimed towards the election topic in general.
+
+
+"Media and race"
+```{r}
+Terms12_nostem[3] 
+```
+
+This is another race related topic, also referring to the media.
+
+"Not Helpful 1"
+```{r}
+Terms12_nostem[4] 
+```
+
+Not every topic is a winner. This one doesn't realy have much power or relevance.
+
+"Obama Muslim"
+```{r}
+Terms12_nostem[5] 
+```
+
+Wow. This topic has pretty strong reference to President Obama and ISIS/Muslims.
+
+"Not helpful 2"
+```{r}
+Terms12_nostem[6] 
+```
+
+Another not helpful topic.
+
+"Action words"
+```{r}
+Terms12_nostem[7] 
+```
+
+This topic is focused on a lot of 'action words'. Things like take, now, and real all are relevant in strong messages urging some type of action.
+
+"Clintons"
+```{r}
+Terms12_nostem[8] 
+```
+
+This topic is referring to both Bill and Hillary Clinton.
+
+"Trump News"
+```{r}
+Terms12_nostem[9] 
+```
+
+
+
+```{r}
+Terms12_nostem[10] 
+```
+
+
+```{r}
+Terms12_nostem[11] 
+```
+
+
+```{r}
+Terms12_nostem[12] 
+```
+
+
+
+
+
+
+#Ideas to explore
+should do a merge at some point to get user details on the tweet level. and then can look at location related items.
+  could also look at timeline of how follower count changes over time
+  
+  look at unique users over time. how many did they add in over the life span, and the quantity of tweets over the lifespan?
+  
+finally do a clustering on users. make them into groups if that makes sense. would be good to showcase dimensionality reductin like pca
+
+
+could also do clustering by hastags...  see which were successful or started trending and which caught up?
+
+
+LDA on this would be good too based off the actual content
+
+Focus on good visuals!
+
+could use reg expressoin to find common thing like trump mentions, obama mentions, hilaary mention, etc. and then use those as features in clustering
