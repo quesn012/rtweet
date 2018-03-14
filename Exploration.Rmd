@@ -181,6 +181,7 @@ tweet_doc <- tm_map(tweet_doc, stripWhitespace)
 The above is just preparing to run topic models. We are stripping out all the things we don't care about; punctuation, numbers, stop words, white space etc. Note I did not stem the words in this case as I wanted to see the full outputs of different words due to the nature of things like twitter handles (real vs realDonaldTrump, etc).
 
 ```{r}
+set.seed(72)
 tfm <- DocumentTermMatrix(tweet_doc)
 
 
@@ -203,7 +204,7 @@ set.seed(72)
 results <- LDA(tfm, k = 12, method = "Gibbs")
 
 
-w= 5
+w= 8
 thresh = 0.01 #was .015
 Terms12_nostem <- terms(results, w,thresh) 
 
@@ -290,6 +291,9 @@ Terms12_nostem[11]
 ```{r}
 Terms12_nostem[12] 
 ```
+
+
+
 
 
 
