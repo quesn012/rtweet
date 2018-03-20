@@ -39,13 +39,15 @@ Also note: this is purely exploratory. None of this is meant to be taken politic
 
 ###Clean up what needs to be cleaned
 ```{r}
-kable(head(tweets,5))
+head(tweets,5)
 
-kable(head(users,5))
+head(users,5)
 ```
 
 
-```{r}
+```{r, results = 'hide'}
+#results are hidden in RMD to shorten document length
+
 describe(tweets)
 
 summary(tweets)
@@ -208,7 +210,7 @@ results <- LDA(tfm, k = 12, method = "Gibbs")
 
 w= 8
 thresh = 0.01 #was .015
-Terms12_nostem2 <- terms(results, w,thresh) 
+Terms12_nostem <- terms(results, w,thresh) 
 
 
 Terms12_nostem #this one is actually pretty solid
@@ -217,24 +219,22 @@ Terms12_nostem #this one is actually pretty solid
 Aftering trying different thresholds and sizes, 12 seems to give us the clearest set of topics. Not every topic is perfect but I think we have a few ones that really stick out!
 
 
-"Not Helpful 1"
+"Get/midnight/said"
 ```{r}
 Terms12_nostem[1:8]
 top = c()
-top[1] = 'Not Helpful 1'
+top[1] = 'Get/Midnight/Said'
 ```
 
-Not every topic in our set was a winner... this is an example of that.
+This was the most generic of the topics discovered. There was not much value in it, but there is consistency around things like get/got, said, etc. The one interesting point is the word midnight. As much as I want to try to summarise each topic, for this one I'm just going to list a few of the words as a title as at this point I'm having a hard time deriving any insighst from it.
 
-"Liberal Media (CNN/Washington Post) Related to Trump"
+"Liberal Media relative to conservatives/Trump"
 ```{r}
 Terms12_nostem[9:16] 
-top[2] = 'Liberal Media Trump'
+top[2] = 'Liberal Media relative to conservatives/Trump'
 ```
 
-Overeducated conservative cowboy. Convservatexan is a twitter handle
-
-
+This topic specific references a few liberal media sources (cnn/washington post) but also along side a popular conservative twitter handle (@conservatexian) as well as Trumps (which would also be Trump's in this case due to how we cleaned our words). My guess is this is a discussion of liberal media sources from other perspectives (most likely conservative ones that support Trump).
 
 "Make America Great Again"
 ```{r}
@@ -242,8 +242,7 @@ Terms12_nostem[17:24]
 top[3] = 'MAGA'
 ```
 
-This topic is relatively simple; focused on trump slogans like #MAGA and including Trump's actual twitter handle. This a pro-Trump hash tag topic.
-
+This topic is relatively simple; focused on trump slogans like #MAGA and including Trump's actual twitter handle as well as PJnet which is the 'patriotic journalist network' set up for voicing conservative opinions on twitter. This a pro-Trump hash tag topic.
 
 
 "General Positive Words"
@@ -290,7 +289,7 @@ Another really interseting one, this topic uses very strong words (stop, die, mu
 "Race & Gender"
 ```{r}
 Terms12_nostem[65:72] 
-top[9] = 'Imperative call for action'
+top[9] = 'Race & Gender'
 ```
 
 This topic is definetly related to race and gender in America. In addition to race (black/white) we also see police and @blicqer (popular black news twitter handle).
@@ -315,23 +314,15 @@ This topic encompasses Trump, then a lot of words related to communication (live
 "Clinton's campaign and FBI"
 ```{r}
 Terms12_nostem[89:96] 
-top[12] = 'Imperative call for action'
+top[12] = "Clinton's campaign and FBI"
 ```
 
 This is massively interesting to me. Hillary or any form of Hillary Clinton where only found in a single topic while Trump was seperate from his twitter handle (Hillary's handle was very absent compared to Trump's). Additinoally, this is a very strong collection of words and was the easiest to interpret. 
 
 
-Now that we have our topics lets do some further analysis!
+Now that we have our topics lets do some further analysis! 
 
-First let's look at volume by topic.
-
-
-```{r}
-
-```
-
-
-More relevant than by topic I think would be looking at how the topics adjusted over time and what topics were being pushed during whats points in the election.
+Let's look at volume by topic, but even more relevant I think would be looking at how the topics adjusted over time and what topics were being pushed during whats points in the election. Before that though, I'm going to add in the topics to the original tweet data set so we can maniuplate the data with the full set of features.
 
 ```{r}
 #find the tweets we used
@@ -348,21 +339,54 @@ tweets_used <- tweets_used %>% filter(used == 'yes')
 First I narrowed down my list of tweets to just those that were used to build our term-frequency matrix (ie: those that stayed on topic). This swas 191k out of 208k so it was over 90% of the total tweets.
 
 ```{r}
-tweet_top <- topics(results,1)
-top
+tweets_used$tweet_top <- topics(results,1)
 
+top_df <- data.frame(index = seq.int(12), topic = top)
 
+tweets_used <- left_join(tweets_used,top_df,by=c('tweet_top'='index'))
 ```
 
 The above gives us the topic for each document out of 191,101 elements. We then merge that in with each corresponding tweet and can see the primary topic of each tweet.
 
+```{r}
+ggplot(tweets_used) + geom_bar(aes(topic, fill = topic)) +  theme(axis.text.x=element_blank(),
+                                                                  axis.ticks.x=element_blank(),
+                                                                  axis.title.x=element_blank()) + ylab('Tweets')
+
+```
+
+The more generic topic (general*, get/midnight/said) have a pretty high volume overall which makes sense. But additionally, we see the most popular relevant topics are 'imperative call for action' and 'liberal media relative to conservatives/Trump'. Lower via volume are toipcs on 'race & gender' as well as 'trump communications to supporters'. That being said, we've already established that volume of tweets is a VERY poor way to establish impact. 60k+ tweets were from users without a single interaction in on any of their tweets. Let's instead look by favorite/retweets.
+
+```{r}
+fav_rt_topic <- tweets_used %>% group_by(topic) %>%
+  summarise(
+    favorites = sum(favorite_count),
+    retweets = sum(retweet_count)
+  )
+
+ggplot(fav_rt_topic) + geom_bar(stat = 'identity',aes(topic,favorites, fill = topic)) +  theme(axis.text.x=element_blank(),
+                                                                  axis.ticks.x=element_blank(),
+                                                                  axis.title.x=element_blank()) + ylab('favorites')
+```
+
+```{r}
+ggplot(fav_rt_topic) + geom_bar(stat = 'identity',aes(topic,retweets, fill = topic)) +  theme(axis.text.x=element_blank(),
+                                                                  axis.ticks.x=element_blank(),
+                                                                  axis.title.x=element_blank()) + ylab('favorites')
+
+```
+
+When looking by interactions, we can see that the general topics get very little interaction here but the tweets that get the most favorites and retweets are 'Clinton's campaign and FBI', 'American people & the election' and 'Race & Gender'. So the successful tweets were really focused on those specific topics as opposed to being generic. The Clinton/FBI tweets stand out as significantly more than any other topic.
 
 
-If we can get a way to only keep non-sparse items by month in here... we should be good.
-  tfm$dimnames$docs has the id of the docs we kept. we can use that to filter to our original docs to get the list of months
-  
+The other important analysis to look at is what topics were being pushed over time and did the topics being discussed in these tweets adjust relative to current events.
 
+```{r}
+tweets_used$one <- 1
 
+#ggplot(tweets_used) + geom_area(aes(month_year,favorite_count,fill=topic))
+
+```
 
 
 
@@ -374,13 +398,9 @@ should do a merge at some point to get user details on the tweet level. and then
   look at unique users over time. how many did they add in over the life span, and the quantity of tweets over the lifespan?
   
 finally do a clustering on users. make them into groups if that makes sense. would be good to showcase dimensionality reductin like pca
-
+could use reg expressoin to find common thing like trump mentions, obama mentions, hilaary mention, etc. and then use those as features in clustering
 
 could also do clustering by hastags...  see which were successful or started trending and which caught up?
 
-
-LDA on this would be good too based off the actual content
-
 Focus on good visuals!
 
-could use reg expressoin to find common thing like trump mentions, obama mentions, hilaary mention, etc. and then use those as features in clustering
