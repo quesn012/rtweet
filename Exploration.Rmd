@@ -3,9 +3,9 @@ title: "Exploration - RT"
 author: "Bryce Quesnel"
 date: "February 24, 2018"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -178,15 +178,15 @@ tweet_doc <- tm_map(tweet_doc, removeWords, stopwords("english"))
 tweet_doc <- tm_map(tweet_doc, stripWhitespace)
 ```
 
-The above is just preparing to run topic models. We are stripping out all the things we don't care about; punctuation, numbers, stop words, white space etc. Note I did not stem the words in this case as I wanted to see the full outputs of different words due to the nature of things like twitter handles (real vs realDonaldTrump, etc).
+The above is just preparing to run topic models. We are stripping out all the things we don't care about; punctuation, numbers, stop words, white space etc. Note I did not stem the words in this case as I wanted to see the full outputs of different words due to the nature of things like twitter handles (real vs realDonaldTrump is an important distinction, etc). 
 
-```{r}
+```{r, cache=TRUE}
 set.seed(72)
 tfm <- DocumentTermMatrix(tweet_doc)
 
 
 #removing sparse items in the matrix
-tfm<-removeSparseTerms(tfm, sparse=0.9999) #since these are stemmed tweets i'm expecting to have a lot of sparseness
+tfm<-removeSparseTerms(tfm, sparse=0.999) #since these are stemmed tweets i'm expecting to have a lot of sparseness
 #setting the bar low for non-sparise items
 
 #removing sparse rows
@@ -197,16 +197,18 @@ tfm = tfm[ui,]
 print(dim(tfm))
 ```
 
-Above is our term frequency matrix. We use this term frequency matrix to run LDA on to find our topics. Note that I removed all rows without terms in the term frequecy matrix. Additionally, I removed the really scarce terms to hopefully decrease the size of the matrix and increase the speed at which this runs.
+Above is our term frequency matrix. We use this term frequency matrix to run LDA on to find our topics. Note that I removed all rows without terms in the term frequecy matrix. Additionally, I removed the really scarce terms to hopefully decrease the size of the matrix and increase the speed at which this runs. Removing scarce terms means we can't generalize to all tweets (about 9% will drop out) but given twitter is not traditional and pure format for words since it can include pictures/images and a lot of non-traditional text (emoji's etc) I think this was an effective way to focus on the tweets that were most legible and relevant in regards to their text context.
 
-```{r}
+
+
+```{r, cache=TRUE}
 set.seed(72)
 results <- LDA(tfm, k = 12, method = "Gibbs")
 
 
 w= 8
 thresh = 0.01 #was .015
-Terms12_nostem <- terms(results, w,thresh) 
+Terms12_nostem2 <- terms(results, w,thresh) 
 
 
 Terms12_nostem #this one is actually pretty solid
@@ -214,86 +216,151 @@ Terms12_nostem #this one is actually pretty solid
 
 Aftering trying different thresholds and sizes, 12 seems to give us the clearest set of topics. Not every topic is perfect but I think we have a few ones that really stick out!
 
-"Police and race"
-```{r}
-Terms12_nostem[1] 
-```
-
-A little unsure on this one but it seems to be focused on race and police as topics. Note that 'blicquer' is a popular black news and twitter handle with over 157k followers.
-
-"General Election"
-```{r}
-Terms12_nostem[2] 
-```
-
-This one seems pretty straightforward, discussing trump and the election. I note that trump is one word and 'hillaryclinton' is to words combined together which makes me think its typically used in a hash tag. This seems non-biased but generally aimed towards the election topic in general.
-
-
-"Media and race"
-```{r}
-Terms12_nostem[3] 
-```
-
-This is another race related topic, also referring to the media.
 
 "Not Helpful 1"
 ```{r}
-Terms12_nostem[4] 
+Terms12_nostem[1:8]
+top = c()
+top[1] = 'Not Helpful 1'
 ```
 
-Not every topic is a winner. This one doesn't realy have much power or relevance.
+Not every topic in our set was a winner... this is an example of that.
 
-"Obama Muslim"
+"Liberal Media (CNN/Washington Post) Related to Trump"
 ```{r}
-Terms12_nostem[5] 
+Terms12_nostem[9:16] 
+top[2] = 'Liberal Media Trump'
 ```
 
-Wow. This topic has pretty strong reference to President Obama and ISIS/Muslims.
+Overeducated conservative cowboy. Convservatexan is a twitter handle
 
-"Not helpful 2"
+
+
+"Make America Great Again"
 ```{r}
-Terms12_nostem[6] 
+Terms12_nostem[17:24] 
+top[3] = 'MAGA'
 ```
 
-Another not helpful topic.
+This topic is relatively simple; focused on trump slogans like #MAGA and including Trump's actual twitter handle. This a pro-Trump hash tag topic.
 
-"Action words"
+
+
+"General Positive Words"
 ```{r}
-Terms12_nostem[7] 
+Terms12_nostem[25:32] 
+top[4] = 'General Positive Words'
 ```
 
-This topic is focused on a lot of 'action words'. Things like take, now, and real all are relevant in strong messages urging some type of action.
+This topic is generally focused on positive words (love, good, right, life).
 
-"Clintons"
+
+"General Action Words"
 ```{r}
-Terms12_nostem[8] 
+Terms12_nostem[33:40] 
+top[5] = 'General Action Words'
 ```
 
-This topic is referring to both Bill and Hillary Clinton.
+This topic is generally focused on action words (say, see, like, want, think).
 
-"Trump News"
+"Obama & Time"
 ```{r}
-Terms12_nostem[9] 
+Terms12_nostem[41:48] 
+top[6] = 'Obama & Time'
 ```
 
+This topic is focused on Obama (president, Obama) and also has a large constraint of time related words (today, day, year, time).
+
+"American people & the election"
+```{r}
+Terms12_nostem[49:56] 
+top[7] = 'American people & the election'
+```
+
+This topic is focused on the American people, as well as the election. Show/support/election are definetly action words used by a side to promote their candidate. That being said the interesting one here is never and media. My initial thoughts are its referring to the media negatively, and saying the American people will decide the election but that may be over playing my own thoughts so I'll keep the topic at American people & the election.
+
+"Imperative call for action"
+```{r}
+Terms12_nostem[57:64] 
+top[8] = 'Imperative call for action'
+```
+
+Another really interseting one, this topic uses very strong words (stop, die, must) that when combined with please make me think its imperative tweets, often request for action. With the combination of die in there, this may be a topic strongly related to either police brutality or overseas military conflict based off my initial readings of the tweets so far.
+
+"Race & Gender"
+```{r}
+Terms12_nostem[65:72] 
+top[9] = 'Imperative call for action'
+```
+
+This topic is definetly related to race and gender in America. In addition to race (black/white) we also see police and @blicqer (popular black news twitter handle).
+
+
+"Global topics and nationalism"
+```{r}
+Terms12_nostem[73:80] 
+top[10] = 'Global topics and nationalis'
+```
+
+This is a global topic, definetly focused on American foreign relations and nationalism. Muslim and world are definetly global words. Work, take back and real all sound vaguely nationalistic as well.
+
+"Trump communication to supporters"
+```{r}
+Terms12_nostem[81:88] 
+top[11] = 'Trump communication to supporters'
+```
+
+This topic encompasses Trump, then a lot of words related to communication (live, watch, video, says) and his supporters. My guess is these tweets are about Trump addressing supporters, at rallies or via another form of communication.
+
+"Clinton's campaign and FBI"
+```{r}
+Terms12_nostem[89:96] 
+top[12] = 'Imperative call for action'
+```
+
+This is massively interesting to me. Hillary or any form of Hillary Clinton where only found in a single topic while Trump was seperate from his twitter handle (Hillary's handle was very absent compared to Trump's). Additinoally, this is a very strong collection of words and was the easiest to interpret. 
+
+
+Now that we have our topics lets do some further analysis!
+
+First let's look at volume by topic.
 
 
 ```{r}
-Terms12_nostem[10] 
+
 ```
 
+
+More relevant than by topic I think would be looking at how the topics adjusted over time and what topics were being pushed during whats points in the election.
 
 ```{r}
-Terms12_nostem[11] 
+#find the tweets we used
+index_tweets <- data.frame(id = as.numeric(tfm$dimnames$Docs), used = 'yes')
+
+#create counting index in tweets
+tweets_used <- tweets %>% mutate(id = seq.int(nrow(tweets)))
+
+#merging index to tweets used. any NA tweets were not used in our analysis and will be filtered out
+tweets_used <- left_join(tweets_used,index_tweets, by='id')
+tweets_used <- tweets_used %>% filter(used == 'yes')
 ```
 
+First I narrowed down my list of tweets to just those that were used to build our term-frequency matrix (ie: those that stayed on topic). This swas 191k out of 208k so it was over 90% of the total tweets.
 
 ```{r}
-Terms12_nostem[12] 
+tweet_top <- topics(results,1)
+top
+
+
 ```
 
+The above gives us the topic for each document out of 191,101 elements. We then merge that in with each corresponding tweet and can see the primary topic of each tweet.
 
 
+
+If we can get a way to only keep non-sparse items by month in here... we should be good.
+  tfm$dimnames$docs has the id of the docs we kept. we can use that to filter to our original docs to get the list of months
+  
 
 
 

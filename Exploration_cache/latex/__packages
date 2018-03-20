@@ -1,0 +1,16 @@
+base
+dplyr
+tidyr
+lattice
+ggplot2
+caret
+lubridate
+survival
+Formula
+Hmisc
+knitr
+NLP
+tm
+topicmodels
+SnowballC
+bindrcpp
