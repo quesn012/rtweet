@@ -47,7 +47,7 @@ head(tweets,5)
 head(users,5)
 ```
 
-First I wanted to look at the users and tweets. Everything seems pretty self explantory based off the column names and data types. 
+First I wanted to look at the users and tweets. Everything seems pretty self explanatory based off the column names and data types. 
 
 
 ```{r, results = 'hide'}
@@ -71,7 +71,7 @@ notime$text
 
 ```
 
-We can see its 9 different users but oddly enough, no text of the tweets exist. I'm guessing these have since been deleted. I checked a few of the accounts and they've been suspended (no suprise) so we are going to filter these ones out for sake of keeping our analysis clean.
+We can see its 9 different users but oddly enough, no text of the tweets exist. I'm guessing these have since been deleted. I checked a few of the accounts and they've been suspended (no surprise) so we are going to filter these ones out for sake of keeping our analysis clean.
 
 ```{r}
 remove(notime) #keeping it clean
@@ -114,7 +114,7 @@ ggplot(tweet_month) + geom_line(aes(month_year,n))
 
 ```
 
-We can see a ton of activity occuring right around election time which isn't supriring, but also carrying forward the months after election into 2017 then rapidly dropping off.
+We can see a ton of activity occurring right around election time which isn't surprising, but also carrying forward the months after election into 2017 then rapidly dropping off.
 
 
 
@@ -128,9 +128,9 @@ top_20_favorite <- arrange(tweets, favorite_count) %>% tail(20) %>%
 top_20_favorite
 ```
 
-Interesting! Off the bat we have all over the board stuff; a lot of Hillary related items, quite a few tweets related to black lives mattersas well as Donald Trump Interesting thing here is you see a lot of users have multiple tweets in the top 20; ten_gop alone has 6 of the top 20 favorited tweets. 
+Interesting! Off the bat we have all over the board stuff; a lot of Hillary related items, quite a few tweets related to black lives masters well as Donald Trump Interesting thing here is you see a lot of users have multiple tweets in the top 20; ten_GOP alone has 6 of the top 20 favorited tweets. 
 
-Speaking of this, lets look at users who have the most likes/retweets. this will be the join where we do summarises to get the sum of favorites/reetweets/etc
+Speaking of this, lets look at users who have the most likes/re-tweets. This will be the join where we do summaries to get the sum of favorites/re-tweets/etc
 
 ```{r}
 top_user <- left_join(tweets,users,by=c('user_key'='name'))
@@ -147,9 +147,9 @@ ggplot(top_user) + geom_density(aes(total_rt)) + xlab('Total Retweets') + ylab('
 ggplot(top_user) + geom_density(aes(total_fav)) + xlab('Total Favorites') + ylab('Number of users')
 ```
 
-The above density plots are pretty ugly but it shows us something imprortant; most of the users were relatiely unknown and there were outliers to ones which were very successful. We'll see users with 1000s of tweets and not a single re-tweet or favorite; this mimics the actual usage of twitter where there is tons of traffic and a few actual very popular tweets.
+The above density plots are pretty ugly but it shows us something important; most of the users were relatively unknown and there were outliers to ones which were very successful. We'll see users with 1000s of tweets and not a single re-tweet or favorite; this mimics the actual usage of twitter where there is tons of traffic and a few actual very popular tweets.
 
-To iterate this let's do a really simple calcluation to find the most popular accounts by activity.
+To iterate this let's do a really simple calculation to find the most popular accounts by activity.
 
 ```{r}
 top_user$total_act <- top_user$total_fav + top_user$total_rt
@@ -158,7 +158,7 @@ top_user <- arrange(top_user, act_ratio)
 tail(top_user,5)
 ```
 
-In the above we count an 'activity' as a retweet or a favorite. We take the total number of 'activity' divided by the total tweets to get the activity per tweet ratio. We can see a few of those same accounts we saw in our top most favorited tweets are here with the highest actvity per tweet ratio. 
+In the above we count an 'activity' as a re-tweet or a favorite. We take the total number of 'activity' divided by the total tweets to get the activity per tweet ratio. We can see a few of those same accounts we saw in our top most favorited tweets are here with the highest activity per tweet ratio. 
 
 ```{r}
 length(top_user$user_key[top_user$act_ratio == 0])
@@ -174,14 +174,14 @@ ggplot(top_user) + geom_bar(stat='identity',aes(act_above_0,total_tweets, fill=a
 
 ```
 
-Additionally, we can see there were 279 users who had NO activity whatsoever, and still created over 61,645 tweets! That's a little shy of a third of all the tweets coming from users who never had ANY actvity whatsoever. Still though, that means more than 2/3s the tweet came from accounts that were active with other twitter accounts in some way or another.
+Additionally, we can see there were 279 users who had NO activity whatsoever, and still created over 61,645 tweets! That's a little shy of a third of all the tweets coming from users who never had ANY activity whatsoever. Still though, that means more than 2/3s the tweet came from accounts that were active with other twitter accounts in some way or another.
 
 
 #Topic Modeling
 
-So let's get to the core of this analysis: Topic modeling! I thought it would be interesting to run latent dirichlet allocation on this data set, which finds the underlying topics within the entire corpus of tweets, and then allows us to label tweets specifically by their topic. This is interesting since it helps us understand what topics were being discussed in what frequency relative to what was occuring during that timeline.  The results may not be too suprising but it would help us understand the topics that were emphasized to influence the election relative to what was going on in the greater political atmosphere.
+So let's get to the core of this analysis: Topic modeling! I thought it would be interesting to run latent Dirichlet allocation on this data set, which finds the underlying topics within the entire corpus of tweets, and then allows us to label tweets specifically by their topic. This is interesting since it helps us understand what topics were being discussed in what frequency relative to what was occurring during that timeline.  The results may not be too surprising but it would help us understand the topics that were emphasized to influence the election relative to what was going on in the greater political atmosphere.
 
-Note: Due to the nature we already discussed, the topics focused on may not represent the actual influence. It is very apparent based of retweets and favorites the quality of the tweet matters more than the quantity. That being said, let's see if topic modeling results make any sense.
+Note: Due to the nature we already discussed, the topics focused on may not represent the actual influence. It is very apparent based of re-tweets and favorites the quality of the tweet matters more than the quantity. That being said, let's see if topic modeling results make any sense.
 
 ```{r}
 #creating a corpus of tweets
@@ -218,7 +218,7 @@ tfm = tfm[ui,]
 print(dim(tfm))
 ```
 
-Above is our term frequency matrix. We use this term frequency matrix to run LDA on to find our topics. Note that I removed all rows without terms in the term frequecy matrix. Additionally, I removed the really scarce terms to hopefully decrease the size of the matrix and increase the speed at which this runs. Removing scarce terms means we can't generalize to all tweets (about 9% will drop out) but given twitter is not traditional and pure format for words since it can include pictures/images and a lot of non-traditional text (emoji's etc) I think this was an effective way to focus on the tweets that were most legible and relevant in regards to their text context.
+Above is our term frequency matrix. We use this term frequency matrix to run LDA on to find our topics. Note that I removed all rows without terms in the term frequency matrix. Additionally, I removed the really scarce terms to hopefully decrease the size of the matrix and increase the speed at which this runs. Removing scarce terms means we can't generalize to all tweets (about 9% will drop out) but given twitter is not traditional and pure format for words since it can include pictures/images and a lot of non-traditional text (emoji's etc) I think this was an effective way to focus on the tweets that were most legible and relevant in regards to their text context.
 
 
 
@@ -235,7 +235,7 @@ Terms12_nostem <- terms(results, w,thresh)
 Terms12_nostem #this one is actually pretty solid
 ```
 
-Aftering trying different thresholds and sizes, 12 seems to give us the clearest set of topics. Not every topic is perfect but I think we have a few ones that really stick out!
+After trying different thresholds and sizes, 12 seems to give us the clearest set of topics. Not every topic is perfect but I think we have a few ones that really stick out!
 
 
 "Get/midnight/said"
@@ -245,7 +245,7 @@ top = c()
 top[1] = 'Get/Midnight/Said'
 ```
 
-This was the most generic of the topics discovered. There was not much value in it, but there is consistency around things like get/got, said, etc. The one interesting point is the word midnight. As much as I want to try to summarise each topic, for this one I'm just going to list a few of the words as a title as at this point I'm having a hard time deriving any insighst from it.
+This was the most generic of the topics discovered. There was not much value in it, but there is consistency around things like get/got, said, etc. The one interesting point is the word midnight. As much as I want to try to summarize each topic, for this one I'm just going to list a few of the words as a title as at this point I'm having a hard time deriving any insights from it.
 
 "Liberal Media relative to conservatives/Trump"
 ```{r}
@@ -253,7 +253,7 @@ Terms12_nostem[9:16]
 top[2] = 'Liberal Media relative to conservatives/Trump'
 ```
 
-This topic specific references a few liberal media sources (cnn/washington post) but also along side a popular conservative twitter handle (@conservatexian) as well as Trumps (which would also be Trump's in this case due to how we cleaned our words). My guess is this is a discussion of liberal media sources from other perspectives (most likely conservative ones that support Trump).
+This topic specific references a few liberal media sources (CNN/Washington post) but also along side a popular conservative twitter handle (@conservatexian) as well as Trumps (which would also be Trump's in this case due to how we cleaned our words). My guess is this is a discussion of liberal media sources from other perspectives (most likely conservative ones that support Trump).
 
 "Make America Great Again"
 ```{r}
@@ -295,7 +295,7 @@ Terms12_nostem[49:56]
 top[7] = 'American people & the election'
 ```
 
-This topic is focused on the American people, as well as the election. Show/support/election are definetly action words used by a side to promote their candidate. That being said the interesting one here is never and media. My initial thoughts are its referring to the media negatively, and saying the American people will decide the election but that may be over playing my own thoughts so I'll keep the topic at American people & the election.
+This topic is focused on the American people, as well as the election. Show/support/election are definitely action words used by a side to promote their candidate. That being said the interesting one here is never and media. My initial thoughts are its referring to the media negatively, and saying the American people will decide the election but that may be over playing my own thoughts so I'll keep the topic at American people & the election.
 
 "Imperative call for action"
 ```{r}
@@ -303,7 +303,7 @@ Terms12_nostem[57:64]
 top[8] = 'Imperative call for action'
 ```
 
-Another really interseting one, this topic uses very strong words (stop, die, must) that when combined with please make me think its imperative tweets, often request for action. With the combination of die in there, this may be a topic strongly related to either police brutality or overseas military conflict based off my initial readings of the tweets so far.
+Another really interesting one, this topic uses very strong words (stop, die, must) that when combined with please make me think its imperative tweets, often request for action. With the combination of die in there, this may be a topic strongly related to either police brutality or overseas military conflict based off my initial readings of the tweets so far.
 
 "Race & Gender"
 ```{r}
@@ -311,7 +311,7 @@ Terms12_nostem[65:72]
 top[9] = 'Race & Gender'
 ```
 
-This topic is definetly related to race and gender in America. In addition to race (black/white) we also see police and @blicqer (popular black news twitter handle).
+This topic is definitely related to race and gender in America. In addition to race (black/white) we also see police and @blicqer (popular black news twitter handle).
 
 
 "Global topics and nationalism"
@@ -320,7 +320,7 @@ Terms12_nostem[73:80]
 top[10] = 'Global topics and nationalis'
 ```
 
-This is a global topic, definetly focused on American foreign relations and nationalism. Muslim and world are definetly global words. Work, take back and real all sound vaguely nationalistic as well.
+This is a global topic, definitely focused on American foreign relations and nationalism. Muslim and world are definitely global words. Work, take back and real all sound vaguely nationalistic as well.
 
 "Trump communication to supporters"
 ```{r}
@@ -336,12 +336,12 @@ Terms12_nostem[89:96]
 top[12] = "Clinton's campaign and FBI"
 ```
 
-This is massively interesting to me. Hillary or any form of Hillary Clinton where only found in a single topic while Trump was seperate from his twitter handle (Hillary's handle was very absent compared to Trump's). Additinoally, this is a very strong collection of words and was the easiest to interpret. 
+This is massively interesting to me. Hillary or any form of Hillary Clinton where only found in a single topic while Trump was separate from his twitter handle (Hillary's handle was very absent compared to Trump's). Additionally, this is a very strong collection of words and was the easiest to interpret. 
 
 
 Now that we have our topics lets do some further analysis! 
 
-Let's look at volume by topic, but even more relevant I think would be looking at how the topics adjusted over time and what topics were being pushed during whats points in the election. Before that though, I'm going to add in the topics to the original tweet data set so we can maniuplate the data with the full set of features.
+Let's look at volume by topic, but even more relevant I think would be looking at how the topics adjusted over time and what topics were being pushed during whats points in the election. Before that though, I'm going to add in the topics to the original tweet data set so we can manipulate the data with the full set of features.
 
 ```{r}
 #find the tweets we used
@@ -355,7 +355,7 @@ tweets_used <- left_join(tweets_used,index_tweets, by='id')
 tweets_used <- tweets_used %>% filter(used == 'yes')
 ```
 
-First I narrowed down my list of tweets to just those that were used to build our term-frequency matrix (ie: those that stayed on topic). This swas 191k out of 208k so it was over 90% of the total tweets.
+First I narrowed down my list of tweets to just those that were used to build our term-frequency matrix (ie: those that stayed on topic). This was 191k out of 208k so it was over 90% of the total tweets.
 
 ```{r}
 tweets_used$tweet_top <- topics(results,1)
@@ -374,7 +374,7 @@ ggplot(tweets_used) + geom_bar(aes(topic, fill = topic)) +  theme(axis.text.x=el
 
 ```
 
-The more generic topic (general*, get/midnight/said) have a pretty high volume overall which makes sense. But additionally, we see the most popular relevant topics are 'imperative call for action' and 'liberal media relative to conservatives/Trump'. Lower via volume are toipcs on 'race & gender' as well as 'trump communications to supporters'. That being said, we've already established that volume of tweets is a VERY poor way to establish impact. 60k+ tweets were from users without a single interaction in on any of their tweets. Let's instead look by favorite/retweets.
+The more generic topic (general*, get/midnight/said) have a pretty high volume overall which makes sense. But additionally, we see the most popular relevant topics are 'imperative call for action' and 'liberal media relative to conservatives/Trump'. Lower via volume are topics on 'race & gender' as well as 'trump communications to supporters'. That being said, we've already established that volume of tweets is a VERY poor way to establish impact. 60k+ tweets were from users without a single interaction in on any of their tweets. Let's instead look by favorite/re-tweets.
 
 ```{r}
 fav_rt_topic <- tweets_used %>% group_by(topic) %>%
@@ -397,7 +397,7 @@ ggplot(fav_rt_topic) + geom_bar(stat = 'identity',aes(topic,retweets, fill = top
 
 ```
 
-When looking by interactions, we can see that the general topics get very little interaction here but the tweets that get the most favorites and retweets are 'Clinton's campaign and FBI', 'American people & the election' and 'Race & Gender'. So the successful tweets were really focused on those specific topics as opposed to being generic. The Clinton/FBI tweets stand out as significantly more than any other topic.
+When looking by interactions, we can see that the general topics get very little interaction here but the tweets that get the most favorites and re-tweets are 'Clinton's campaign and FBI', 'American people & the election' and 'Race & Gender'. So the successful tweets were really focused on those specific topics as opposed to being generic. The Clinton/FBI tweets stand out as significantly more than any other topic.
 
 
 The other important analysis to look at is what topics were being pushed over time and did the topics being discussed in these tweets adjust relative to current events.
@@ -406,7 +406,7 @@ The other important analysis to look at is what topics were being pushed over ti
 ggplot(tweets_used, aes(x=month_year,fill=topic)) + geom_area(stat='bin') + xlab('Time') + ylab('Tweets')
 ```
 
-The above is looking at what was being tweeted most frequently and when. One thing that stands out is at a high level the ratios seem fairly similar. We do see alot more of the pinkish ('Race & gender' and 'trump communication to supporters') right around election but its hard to really tell from this high of a view. Let's take a closer look at the final 4 months of 2016 (peak election time)
+The above is looking at what was being tweeted most frequently and when. One thing that stands out is at a high level the ratios seem fairly similar. We do see a lot more of the pinkish ('Race & gender' and 'trump communication to supporters') right around election but its hard to really tell from this high of a view. Let's take a closer look at the final 4 months of 2016 (peak election time)
 
 
 ```{r}
@@ -421,7 +421,7 @@ ggplot(tweets_used_6mo_elec, aes(x=topic, fill = topic)) + geom_bar() + facet_wr
 
 It looks like leading up to the election, specifically in September and October, there was a skyrocket in tweets related to 'Clinton's campaign and FBI' that quickly died of after. Come December, this was actually the least tweeted topic (which kind of makes sense since at that point the Clinton campaign had been defeated and was out of the picture). If we check back in the months prior to the election year, we see this wasn't really being discussed either. This topic was primarily pushed in the month directly prior to the election but had very little head before/after that.
 
-We do also see a strong 'MAGA' push in pro trump tweets as well as 'trump communication to supporters'. Interestingly in December we see discussion around 'liberal media relative to conservatives/Trump' picking up; this does not suprise me either given the consistent tension between Trump and liberal media sources since his time in office.
+We do also see a strong 'MAGA' push in pro trump tweets as well as 'trump communication to supporters'. Interestingly in December we see discussion around 'liberal media relative to conservatives/Trump' picking up; this does not surprise me either given the consistent tension between Trump and liberal media sources since his time in office.
 
 
 ```{r}
@@ -440,13 +440,13 @@ If we continue to look forward into 2017, we see the tweets themselves drop off 
 
 Assuming that the topics discussed here were planned and at some level of strategy (and not just a response to what was already in the media), we learned a few key things:
 
-- Upwards of 450 twitter handles were used in this data set for influencing the election. More than half had no activity, but the majority of the tweets (~150k out of ~210k) were from accounts with atlesat some type of interactions with another account. Note that it is highly like accounts were liking one another to boost stats, which is why its espeically important to look at the top accounts with the most activity.
+- Upwards of 450 twitter handles were used in this data set for influencing the election. More than half had no activity, but the majority of the tweets (~150k out of ~210k) were from accounts with atleast some type of interactions with another account. Note that it is highly like accounts were liking one another to boost stats, which is why its especially important to look at the top accounts with the most activity.
 
 - A few top accounts had the most activity by far. These accounts ranged from many different topics and areas, not just a single political focus.
 
-- The majority of tweets were related to general topics. That being said, these general tweets had very little success as far as favorites/retweets. The most interacted with (and therefore successful tweets) were related to the Clinton's and the FBI, race and gender, or the American people and the election in general.
+- The majority of tweets were related to general topics. That being said, these general tweets had very little success as far as favorites/re-tweets. The most interacted with (and therefore successful tweets) were related to the Clinton's and the FBI, race and gender, or the American people and the election in general.
 
-- Time is an important factor. Obviously more tweets and focus occured right around the election, but tweets related to Hillary Clinton and the FBI skyrocketed directly prior to the election, then quickly died off after. Following the election, the most talked about topic was the liberal media relative to conservatives/Trump.
+- Time is an important factor. Obviously more tweets and focus occurred right around the election, but tweets related to Hillary Clinton and the FBI skyrocketed directly prior to the election, then quickly died off after. Following the election, the most talked about topic was the liberal media relative to conservatives/Trump.
 
 
 
